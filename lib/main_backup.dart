@@ -19,6 +19,7 @@ class _SkyeAppState extends State<SkyeApp> {
   File? _image;
   List<dynamic>? _results;
   bool _isModelLoaded = false;
+  String? _error;
 
   @override
   void initState() {
@@ -28,15 +29,13 @@ class _SkyeAppState extends State<SkyeApp> {
         .then((_) {
           if (mounted) {
             setState(() => _isModelLoaded = true);
-            debugPrint('✓ Model loaded successfully');
+            debugPrint('Model loaded successfully');
           }
         })
         .catchError((e) {
-          debugPrint('✗ Error loading model: $e');
+          debugPrint('Error loading model: $e');
           if (mounted) {
-            setState(() {
-              _isModelLoaded = false;
-            });
+            setState(() => _error = 'Failed to load model: $e');
           }
         });
   }
@@ -58,10 +57,13 @@ class _SkyeAppState extends State<SkyeApp> {
         debugPrint('Image selected: ${picked.path}');
         final res = await helper.runInference(picked.path);
         if (mounted) {
-          setState(() => _results = res);
-          if (res == null || res.isEmpty) {
-            debugPrint('No detections returned from model');
-          }
+          setState(() {
+            _results = res;
+            _error = null;
+            if (res == null || res.isEmpty) {
+              debugPrint('No detections returned from model');
+            }
+          });
         }
       } else {
         debugPrint('No image selected');
@@ -69,6 +71,7 @@ class _SkyeAppState extends State<SkyeApp> {
     } catch (e) {
       debugPrint('Error picking/processing image: $e');
       if (mounted) {
+        setState(() => _error = 'Error: $e');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -85,6 +88,14 @@ class _SkyeAppState extends State<SkyeApp> {
           child: Column(
             children: [
               if (!_isModelLoaded) const LinearProgressIndicator(),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _isModelLoaded ? _pickImage : null,
@@ -102,7 +113,17 @@ class _SkyeAppState extends State<SkyeApp> {
                   ),
                 ),
               if (_results != null && _results!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Found ${_results!.length} product(s)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              if (_results != null)
                 ..._results!.map<Widget>((r) {
+                  // Object detection (YOLO/SSD) uses 'detectedClass' and 'confidenceInClass'
+                  // We use the ?? operator to fall back to 'label'/'confidence' for compatibility
                   final label =
                       (r['detectedClass'] ?? r['label'])?.toString() ??
                       'Unknown';

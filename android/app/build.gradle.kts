@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -16,20 +15,18 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.example.skye"
-        minSdk = 21   // ✅ Explicitly set to 21 for TFLite compatibility
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Ensure .tflite and .lite files are not compressed
-        aaptOptions {
-            noCompress 'tflite'
-            noCompress 'lite'
+        androidResources {
+            noCompress += listOf("tflite", "lite")
         }
     }
 
